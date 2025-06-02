@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garden Stock Inventory</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .last-updated {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .category {
+            margin-bottom: 30px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .category-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffa500;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #ffa500;
+            padding-bottom: 5px;
+        }
+        
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .stock-item {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-name {
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        .quantity {
+            color: #ffa500;
+            font-weight: bold;
+            background-color: #444;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .refresh-btn {
+            background-color: #ffa500;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background-color: #ff8c00;
+        }
+        
+        .auto-update {
+            color: #4ade80;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #4ade80;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .empty-category {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌱 Garden Stock Inventory</h1>
+            <div class="last-updated">
+                <span class="status-dot"></span>
+                Last updated: {{ last_updated or 'Never' }}
+                <span class="auto-update">Auto-updates every 5 minutes</span>
+            </div>
+            <button class="refresh-btn" onclick="refreshStock()">🔄 Refresh Now</button>
+        </div>
+        
+        <div id="stockDisplay">
+            {% for category, items in stock_data.items() %}
+            <div class="category">
+                <div class="category-title">{{ category }}</div>
+                
+                {% if items %}
+                <div class="stock-grid">
+                    {% for item in items %}
+                    <div class="stock-item">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="quantity">×{{ item.quantity }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-category">No items in stock</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        async function refreshStock() {
+            const btn = document.querySelector('.refresh-btn');
+            const originalText = btn.textContent;
+            btn.textContent = '🔄 Refreshing...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/refresh');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Reload the page to show updated data
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error refreshing stock:', error);
+                alert('Error refreshing stock data');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        // Auto-refresh page every 6 minutes (slightly longer than server update)
+        setInterval(() => {
+            location.reload();
+        }, 360000);
+        
+        // Update last updated time display
+        function updateTimeDisplay() {
+            const lastUpdated = "{{ last_updated }}";
+            if (lastUpdated && lastUpdated !== 'Never') {
+                const updateTime = new Date(lastUpdated);
+                const now = new Date();
+                const diffMinutes = Math.floor((now - updateTime) / 60000);
+                
+                const timeElement = document.querySelector('.last-updated');
+                if (diffMinutes < 1) {
+                    timeElement.innerHTML = '<span class="status-dot"></span>Last updated: Just now <span class="auto-update">Auto-updates every 5 minutes</span>';
+                } else {
+                    timeElement.innerHTML = `<span class="status-dot"></span>Last updated: ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago <span class="auto-update">Auto-updates every 5 minutes</span>`;
+                }
+            }
+        }
+        
+        // Update time display every minute
+        setInterval(updateTimeDisplay, 60000);
+        updateTimeDisplay();
+    </script>
+</body>
+</html>
