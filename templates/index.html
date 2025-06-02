@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Garden Stock Inventory</title>
     <style>
         body {
@@ -252,18 +252,17 @@
                 <span class="auto-update">Auto-updates every 5 minutes</span>
             </div>
         </div>
-        
+
         <div class="controls">
             <button class="refresh-btn" onclick="refreshStock()">🔄 Refresh Now</button>
             <button class="category-filter active" onclick="filterCategory('all')">All Categories</button>
-            <button class="category-filter" onclick="filterCategory('SEEDS')">🌱 Seeds</button>
-            <button class="category-filter" onclick="filterCategory('GEARS')">⚙️ Gears</button>
-            <button class="category-filter" onclick="filterCategory('EGGS')">🥚 Eggs</button>
-            <button class="category-filter" onclick="filterCategory('EVENT_SHOP')">🏪 Event Shop</button>
-            <button class="category-filter" onclick="filterCategory('COSMETICS')">🎨 Cosmetics</button>
+            {% for category in stock_data.keys() %}
+            <button class="category-filter" onclick="filterCategory('{{ category }}')">
+                {{ category_icons.get(category, '📁') }} {{ category.replace('_', ' ') }}
+            </button>
+            {% endfor %}
         </div>
-        
-        <!-- Weather Section -->
+
         {% if weather_data %}
         <div class="weather-section">
             <h2>🌤️ Current Weather</h2>
@@ -273,12 +272,12 @@
                 <span style="font-size: 16px; color: #ddd;">- Active Now</span>
             </div>
             {% endif %}
-            
+
             {% if weather_data.recent %}
             <div class="weather-recent">
                 {% for weather in weather_data.recent %}
                 <div class="weather-item">
-                    <strong>{{ weather.condition }}</strong><br>
+                    <strong>{{ weather.condition }}</strong><br />
                     <small>{{ weather.time }}</small>
                 </div>
                 {% endfor %}
@@ -286,8 +285,7 @@
             {% endif %}
         </div>
         {% endif %}
-        
-        <!-- Stats Bar -->
+
         <div class="stats-bar">
             {% for category, items in stock_data.items() %}
             <div class="stat-item">
@@ -300,18 +298,17 @@
                 <div class="stat-label">Total Items</div>
             </div>
         </div>
-        
+
         <div id="stockDisplay" class="categories-grid">
             {% for category, items in stock_data.items() %}
             <div class="category" data-category="{{ category }}">
                 <div class="category-header">
                     <div class="category-title">
-                        {% if category == 'SEEDS' %}🌱{% elif category == 'GEARS' %}⚙️{% elif category == 'EGGS' %}🥚{% elif category == 'EVENT_SHOP' %}🏪{% elif category == 'COSMETICS' %}🎨{% endif %}
-                        {{ category.replace('_', ' ') }}
+                        {{ category_icons.get(category, '📁') }} {{ category.replace('_', ' ') }}
                     </div>
                     <div class="category-count">{{ items|length }}</div>
                 </div>
-                
+
                 {% if items %}
                 <div class="stock-grid">
                     {% for item in items %}
@@ -334,99 +331,48 @@
 
     <script>
         let currentFilter = 'all';
-        
+
         async function refreshStock() {
             const btn = document.querySelector('.refresh-btn');
             const originalText = btn.textContent;
             btn.textContent = '🔄 Refreshing...';
             btn.disabled = true;
-            
+
             try {
                 const response = await fetch('/api/refresh');
                 const data = await response.json();
-                
                 if (data.status === 'success') {
-                    // Show success message briefly
-                    btn.textContent = '✅ Updated!';
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
+                    location.reload();
+                } else {
+                    alert('Failed to refresh: ' + data.message);
                 }
             } catch (error) {
-                console.error('Error refreshing stock:', error);
-                btn.textContent = '❌ Error';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.disabled = false;
-                }, 2000);
+                alert('Error refreshing stock.');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
-        
+
         function filterCategory(category) {
             currentFilter = category;
-            
-            // Update filter buttons
             document.querySelectorAll('.category-filter').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
-            
-            // Show/hide categories
-            document.querySelectorAll('.category').forEach(cat => {
-                if (category === 'all' || cat.dataset.category === category) {
-                    cat.classList.remove('hidden');
+            document.querySelectorAll('.category-filter').forEach(btn => {
+                if (btn.textContent.includes(category.replace('_', ' ')) || category === 'all') {
+                    btn.classList.add('active');
+                }
+            });
+
+            document.querySelectorAll('.category').forEach(catEl => {
+                if (category === 'all' || catEl.dataset.category === category) {
+                    catEl.style.display = '';
                 } else {
-                    cat.classList.add('hidden');
+                    catEl.style.display = 'none';
                 }
             });
         }
-        
-        // Auto-refresh page every 6 minutes (slightly longer than server update)
-        setInterval(() => {
-            location.reload();
-        }, 360000);
-        
-        // Update last updated time display
-        function updateTimeDisplay() {
-            const lastUpdated = "{{ last_updated }}";
-            if (lastUpdated && lastUpdated !== 'Never') {
-                const updateTime = new Date(lastUpdated);
-                const now = new Date();
-                const diffMinutes = Math.floor((now - updateTime) / 60000);
-                
-                const timeElement = document.querySelector('.last-updated');
-                if (diffMinutes < 1) {
-                    timeElement.innerHTML = '<span class="status-dot"></span>Last updated: Just now <span class="auto-update">Auto-updates every 5 minutes</span>';
-                } else {
-                    timeElement.innerHTML = `<span class="status-dot"></span>Last updated: ${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago <span class="auto-update">Auto-updates every 5 minutes</span>`;
-                }
-            }
-        }
-        
-        // Search functionality
-        function searchItems(query) {
-            const items = document.querySelectorAll('.stock-item');
-            items.forEach(item => {
-                const itemName = item.querySelector('.item-name').textContent.toLowerCase();
-                if (itemName.includes(query.toLowerCase())) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        }
-        
-        // Update time display every minute
-        setInterval(updateTimeDisplay, 60000);
-        updateTimeDisplay();
-        
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'r' && e.ctrlKey) {
-                e.preventDefault();
-                refreshStock();
-            }
-        });
     </script>
 </body>
 </html>
