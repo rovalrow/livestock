@@ -14,47 +14,8 @@ stock_data = {}
 weather_data = {}
 last_updated = None
 
-def parse_stock_section(soup, section_name):
-    """Parse a specific stock section from the HTML"""
-    items = []
-    
-    # Find the section header
-    section_header = soup.find(text=re.compile(section_name, re.I))
-    if not section_header:
-        return items
-    
-    # Find the parent element and get subsequent elements
-    current = section_header.parent if section_header.parent else section_header
-    
-    # Navigate to find items after the header
-    while current:
-        current = current.find_next_sibling() if hasattr(current, 'find_next_sibling') else None
-        if not current:
-            break
-            
-        # Stop if we hit another section
-        if current.get_text() and any(sect in current.get_text().upper() for sect in 
-                                     ['SEEDS', 'GEARS', 'EGGS', 'WEATHER', 'EVENT SHOP', 'COSMETICS']):
-            if section_name.upper() not in current.get_text().upper():
-                break
-        
-        # Look for item patterns
-        text = current.get_text().strip()
-        if text and 'x' in text:
-            # Extract item name and quantity
-            match = re.search(r'(.+?)\s*x(\d+)', text)
-            if match:
-                item_name = match.group(1).strip()
-                quantity = int(match.group(2))
-                items.append({
-                    "name": item_name,
-                    "quantity": quantity
-                })
-    
-    return items
-
 def fetch_stock_data():
-    """Fetch and parse stock data from the new website"""
+    """Fetch and parse stock data from the website"""
     global stock_data, weather_data, last_updated
     
     try:
@@ -69,19 +30,13 @@ def fetch_stock_data():
         # Parse the HTML content
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Get all text content and split into lines for easier parsing
-        text_content = soup.get_text()
-        lines = [line.strip() for line in text_content.split('\n') if line.strip()]
-        
         # Initialize categories
         categories = {
             "SEEDS": [],
             "GEARS": [],
             "EGGS": [],
             "EVENT_SHOP": [],
-            "COSMETICS": [],
-            "COSMETIC_CRATES": [],
-            "COSMETIC_ITEMS": []
+            "COSMETICS": []
         }
         
         weather_info = {
@@ -89,89 +44,142 @@ def fetch_stock_data():
             "recent": []
         }
         
-        current_category = None
-        current_subcategory = None
+        # Parse Seeds section
+        seeds_section = soup.find('section', {'id': 'seeds-section'})
+        if seeds_section:
+            stock_items = seeds_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    name = name_elem.get_text().strip()
+                    quantity_text = quantity_elem.get_text().strip()
+                    
+                    # Extract quantity number
+                    quantity_match = re.search(r'x(\d+)', quantity_text)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        categories["SEEDS"].append({
+                            "name": name,
+                            "quantity": quantity
+                        })
         
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            
-            # Check for main categories
-            if line.upper() == "SEEDS":
-                current_category = "SEEDS"
-                current_subcategory = None
-            elif line.upper() == "GEARS":
-                current_category = "GEARS"
-                current_subcategory = None
-            elif line.upper() == "EGGS":
-                current_category = "EGGS"
-                current_subcategory = None
-            elif line.upper() == "EVENT SHOP STOCK":
-                current_category = "EVENT_SHOP"
-                current_subcategory = None
-            elif line.upper() == "COSMETICS":
-                current_category = "COSMETICS"
-                current_subcategory = None
-            elif line.upper() == "COSMETIC CRATES":
-                current_category = "COSMETICS"
-                current_subcategory = "COSMETIC_CRATES"
-            elif line.upper() == "COSMETIC ITEMS":
-                current_category = "COSMETICS"
-                current_subcategory = "COSMETIC_ITEMS"
-            elif line.upper() == "WEATHER":
-                current_category = "WEATHER"
-                current_subcategory = None
-            
-            # Parse weather information
-            elif current_category == "WEATHER":
-                if "Frost" in line or "Rain" in line or "Thunderstorm" in line:
-                    if "Most Recent" in lines[i+1:i+2]:
-                        weather_info["current"] = line
+        # Parse Gears section
+        gears_section = soup.find('section', {'id': 'gears-section'})
+        if gears_section:
+            stock_items = gears_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    name = name_elem.get_text().strip()
+                    quantity_text = quantity_elem.get_text().strip()
+                    
+                    # Extract quantity number
+                    quantity_match = re.search(r'x(\d+)', quantity_text)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        categories["GEARS"].append({
+                            "name": name,
+                            "quantity": quantity
+                        })
+        
+        # Parse Eggs section
+        eggs_section = soup.find('section', {'id': 'eggs-section'})
+        if eggs_section:
+            stock_items = eggs_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    name = name_elem.get_text().strip()
+                    quantity_text = quantity_elem.get_text().strip()
+                    
+                    # Extract quantity number
+                    quantity_match = re.search(r'x(\d+)', quantity_text)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        categories["EGGS"].append({
+                            "name": name,
+                            "quantity": quantity
+                        })
+        
+        # Parse Event Shop Stock section
+        event_section = soup.find('section', {'id': 'event-shop-stock-section'})
+        if event_section:
+            stock_items = event_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    name = name_elem.get_text().strip()
+                    quantity_text = quantity_elem.get_text().strip()
+                    
+                    # Extract quantity number
+                    quantity_match = re.search(r'x(\d+)', quantity_text)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        categories["EVENT_SHOP"].append({
+                            "name": name,
+                            "quantity": quantity
+                        })
+        
+        # Parse Cosmetics section
+        cosmetics_section = soup.find('section', {'id': 'cosmetics-section'})
+        if cosmetics_section:
+            stock_items = cosmetics_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    name = name_elem.get_text().strip()
+                    quantity_text = quantity_elem.get_text().strip()
+                    
+                    # Extract quantity number
+                    quantity_match = re.search(r'x(\d+)', quantity_text)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        categories["COSMETICS"].append({
+                            "name": name,
+                            "quantity": quantity
+                        })
+        
+        # Parse Weather section
+        weather_section = soup.find('section', {'id': 'weather-section'})
+        if weather_section:
+            stock_items = weather_section.find_all('div', class_='stock-item')
+            for item in stock_items:
+                name_elem = item.find('div', class_='item-name')
+                quantity_elem = item.find('div', class_='item-quantity')
+                
+                if name_elem and quantity_elem:
+                    weather_name = name_elem.get_text().strip()
+                    time_info = quantity_elem.get_text().strip()
+                    
+                    # Check if this is the current weather (Most Recent)
+                    if "Most Recent" in time_info:
+                        weather_info["current"] = weather_name
                     else:
-                        # Look for time information in next lines
-                        time_info = ""
-                        if i + 1 < len(lines) and ("ago" in lines[i+1] or "mins" in lines[i+1] or "hours" in lines[i+1]):
-                            time_info = lines[i+1]
                         weather_info["recent"].append({
-                            "condition": line,
+                            "condition": weather_name,
                             "time": time_info
                         })
-            
-            # Parse items with quantities
-            elif current_category and current_category != "WEATHER":
-                # Look for pattern: ItemName x[number]
-                match = re.search(r'^(.+?)\s*x(\d+)$', line)
-                if match:
-                    item_name = match.group(1).strip()
-                    quantity = int(match.group(2))
-                    
-                    item = {
-                        "name": item_name,
-                        "quantity": quantity
-                    }
-                    
-                    if current_subcategory == "COSMETIC_CRATES":
-                        categories["COSMETIC_CRATES"].append(item)
-                    elif current_subcategory == "COSMETIC_ITEMS":
-                        categories["COSMETIC_ITEMS"].append(item)
-                    elif current_category in categories:
-                        categories[current_category].append(item)
-            
-            i += 1
-        
-        # Combine cosmetic subcategories
-        if categories["COSMETIC_CRATES"] or categories["COSMETIC_ITEMS"]:
-            categories["COSMETICS"] = categories["COSMETIC_CRATES"] + categories["COSMETIC_ITEMS"]
-        
-        # Clean up empty subcategories
-        del categories["COSMETIC_CRATES"]
-        del categories["COSMETIC_ITEMS"]
         
         stock_data = categories
         weather_data = weather_info
         last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        total_items = sum(len(items) for items in categories.values())
         print(f"Stock data updated at {last_updated}")
-        print(f"Found items: {sum(len(items) for items in categories.values())}")
+        print(f"Found {total_items} items across all categories")
+        print(f"Seeds: {len(categories['SEEDS'])}, Gears: {len(categories['GEARS'])}, Eggs: {len(categories['EGGS'])}")
+        print(f"Event Shop: {len(categories['EVENT_SHOP'])}, Cosmetics: {len(categories['COSMETICS'])}")
+        print(f"Current weather: {weather_info['current']}")
         
     except Exception as e:
         print(f"Error fetching stock data: {e}")
@@ -225,6 +233,14 @@ def api_category(category):
             'error': 'Category not found',
             'available_categories': list(stock_data.keys())
         }), 404
+
+@app.route('/api/weather')
+def api_weather():
+    """API endpoint to get weather data"""
+    return jsonify({
+        'weather_data': weather_data,
+        'last_updated': last_updated
+    })
 
 if __name__ == '__main__':
     # Initial fetch
