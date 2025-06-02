@@ -14,6 +14,15 @@ stock_data = {}
 weather_data = {}
 last_updated = None
 
+# Category icons mapping
+CATEGORY_ICONS = {
+    "SEEDS": "🌱",
+    "GEARS": "⚙️",
+    "EGGS": "🥚",
+    "EVENT_SHOP": "🎪",
+    "COSMETICS": "💄"
+}
+
 def fetch_stock_data():
     """Fetch and parse stock data from the website"""
     global stock_data, weather_data, last_updated
@@ -197,7 +206,8 @@ def index():
     return render_template('index.html', 
                          stock_data=stock_data, 
                          weather_data=weather_data,
-                         last_updated=last_updated)
+                         last_updated=last_updated,
+                         category_icons=CATEGORY_ICONS)
 
 @app.route('/api/stock')
 def api_stock():
