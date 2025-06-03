@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, Response
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -22,6 +22,34 @@ CATEGORY_ICONS = {
     "EVENT_SHOP": "🎪",
     "COSMETICS": "💄"
 }
+
+def fetch_swertres_results():
+    url = "https://www.lottopcso.com/swertres-result-today/"
+    headers = {
+        'User-Agent': 'Mozilla/5.0'
+    }
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find the table with 3D results
+        table = soup.find('table')
+        if not table:
+            return []
+
+        results = []
+        rows = table.find_all('tr')[1:]  # skip header
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 2:
+                time = cols[0].text.strip()
+                result = cols[1].text.strip()
+                results.append(f"{time} {result}")
+        return results
+    except Exception as e:
+        print(f"Failed to fetch Swertres results: {e}")
+        return []
 
 def fetch_stock_data():
     """Fetch and parse stock data from the website"""
@@ -226,6 +254,14 @@ def api_refresh():
         'status': 'success',
         'message': 'Stock data refreshed',
         'last_updated': last_updated
+    })
+
+@app.route('/api/3d')
+def api_3d():
+    results = fetch_swertres_results()
+    return jsonify({
+        "date": datetime.now().strftime("%B %d, %Y"),
+        "results": results
     })
 
 @app.route('/api/category/<category>')
